@@ -30,11 +30,29 @@ class WebhookEndpoint(Endpoint):
     - `raw_data_output`: When true, workflow responses will only return the data.outputs
     """
 
+    def _coerce_boolean_settings(self, settings: Mapping) -> Dict[str, Any]:
+        """
+        Coerces string boolean values to actual booleans for known boolean settings.
+        This works around frontend serialization issues where booleans are sent as strings.
+        """
+        boolean_fields = ['raw_data_output', 'explicit_inputs', 'json_string_input']
+        coerced_settings = dict(settings)
+        
+        for field in boolean_fields:
+            if field in coerced_settings:
+                value = coerced_settings[field]
+                if isinstance(value, str):
+                    coerced_settings[field] = value.lower() == 'true'
+        
+        return coerced_settings
+
     def _invoke(self, r: Request, values: Mapping, settings: Mapping) -> Response:
         """
         Invokes the endpoint with the given request for either chatflow or workflow.
         """
         logger.info("Received request to unified endpoint")
+        
+        settings = self._coerce_boolean_settings(settings)
 
         # Determine the endpoint mode
         route = determine_route(r.path)
